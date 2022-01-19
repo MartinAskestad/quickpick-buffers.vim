@@ -3,20 +3,22 @@ if !exists('g:quickpick_buffers_reuse_window')
 endif
 function! quickpick#pickers#buffers#open() abort
   call quickpick#open({
+        \ 'filter': 0,
         \ 'items': s:get_buffers(),
-        \ 'on_accept': function('s:on_accept')
+        \ 'on_accept': function('s:on_accept'),
+        \ 'on_change': function('s:on_change')
         \ })
 endfunction
 
 function! s:get_buffers() abort
-  let buffers = []
+  let s:buffers = []
   for buf in getbufinfo({'buflisted':1})
-    call add(buffers, buf.name)
+    call add(s:buffers, buf.name)
   endfor
-  return buffers
+  return s:buffers
 endfunction
 
-function! s:on_accept(data, ...) abort
+function! s:on_accept(data, name) abort
   call quickpick#close()
   let selected_buffer_path = a:data['items'][0]
   let wnr = bufwinnr(selected_buffer_path)
@@ -29,4 +31,16 @@ function! s:on_accept(data, ...) abort
   endif
 endfunction
 
+function! s:on_change(data, name) abort
+  if empty(a:data['input'])
+    call quickpick#items(s:buffers)
+  else
+    if exists('matchfuzzy')
+      let l:buffers = matchfuzzy(s:buffers, a:data['input'])
+    else
+      let l:buffers = filter(copy(s:buffers), 'stridx(toupper(v:val), toupper(a:data["input"])) >= 0')
+    endif
+    call quickpick#items(l:buffers)
+  endif
+endfunction
 " vim: tabstop=2 shiftwidth=2 expandtab
